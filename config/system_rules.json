@@ -1,0 +1,19 @@
+{
+    "version": "1.0.0",
+    "institucion": "EPIS-UPT",
+    "semestre": "2026-II",
+    "poblacion_estudiantes": 350,
+    "distribucion_estudiantes": {
+        "mentores": 40,
+        "tutorados": 310
+    },
+    "nota_minima_mentor": 14,
+    "top_k_recomendados": 3,
+    "quorum_presencial": 10,
+    "quorum_virtual": 20,
+    "pesos_algoritmo": {
+        "alpha_coseno": 0.70,
+        "beta_saturacion": 0.20,
+        "gamma_bono_nuevo": 0.10
+    }
+}

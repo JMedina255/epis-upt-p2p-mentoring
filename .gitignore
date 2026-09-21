@@ -1,0 +1,31 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# CPython cache
+.pytest_cache/
+
+# Entornos virtuales
+venv/
+env/
+ENV/
+.env
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints
+*/.ipynb_checkpoints/*
+
+# IDE y editores
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Temporales de Sistema Operativo
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Streamlit temporales
+.streamlit/secrets.toml
