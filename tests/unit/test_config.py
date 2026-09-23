@@ -132,3 +132,32 @@ def test_config_nota_minima_fuera_de_escala_vigesimal_lanza_error(tmp_path):
     with pytest.raises(ValueError, match="nota_minima_mentor.*vigesimal"):
         cargar_reglas_sistema(str(archivo))
 
+
+def test_validar_reglas_no_es_diccionario_lanza_error():
+    """Valida que pasar un objeto que no es dict a validar_reglas_sistema lance ValueError."""
+    with pytest.raises(ValueError, match="La configuración debe ser un diccionario"):
+        validar_reglas_sistema(["no", "es", "dict"])
+
+
+def test_validar_reglas_pesos_no_es_diccionario_lanza_error():
+    """Valida que pesos_algoritmo que no sea dict lance ValueError."""
+    with pytest.raises(ValueError, match="pesos_algoritmo debe ser un diccionario"):
+        validar_reglas_sistema({"pesos_algoritmo": "invalido"})
+
+
+def test_cargar_reglas_ruta_inexistente_lanza_filenotfound(tmp_path):
+    """Valida que pasar una ruta_config explícita inexistente lance FileNotFoundError."""
+    ruta_falsa = tmp_path / "archivo_no_existente.json"
+    with pytest.raises(FileNotFoundError, match="No se encontró el archivo"):
+        cargar_reglas_sistema(str(ruta_falsa))
+
+
+def test_cargar_reglas_fallback_cuando_no_hay_archivos(monkeypatch):
+    """Valida que si no se encuentra ningún archivo de configuración en las rutas por defecto, devuelva el fallback."""
+    monkeypatch.setattr("os.path.exists", lambda r: False)
+    config = cargar_reglas_sistema()
+    assert config["nota_minima_mentor"] == 14
+    assert config["top_k_recomendados"] == 3
+    assert config["pesos_algoritmo"]["alpha_coseno"] == 0.70
+
+

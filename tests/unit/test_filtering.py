@@ -4,8 +4,9 @@ Utiliza la fixture aislada 'test_db' (Paso 13) para garantizar pruebas reproduci
 herméticas y sin acoplamiento a data/epis_mentorias.db.
 """
 
+import os
 import pytest
-from src.motor_recomendacion import filtrar_mentores_sql
+from src.motor_recomendacion import filtrar_mentores_sql, resolver_ruta_bd
 
 
 def test_filtrado_sql_excluye_nota_menor_al_umbral(test_db):
@@ -144,4 +145,27 @@ def test_filtrado_sql_max_cupos_cero(tmp_path):
 
     candidatos = filtrar_mentores_sql("INE-186", "Sabado", "08:00 - 10:30", db_path=str(db_file))
     assert candidatos == [], "Un mentor con max_cupos_mentor = 0 nunca debe superar el filtro SQL"
+
+
+def test_resolver_ruta_absoluta_existente(tmp_path):
+    """Valida que resolver_ruta_bd devuelva la misma ruta absoluta si el archivo existe."""
+    archivo_db = tmp_path / "prueba.db"
+    archivo_db.write_text("dummy", encoding="utf-8")
+    assert resolver_ruta_bd(str(archivo_db)) == str(archivo_db)
+
+
+def test_resolver_ruta_inexistente_devuelve_original(monkeypatch):
+    """Valida que resolver_ruta_bd devuelva la cadena original si ninguna ruta candidata existe."""
+    monkeypatch.setattr(os.path, "exists", lambda p: False)
+    ruta_falsa = "base_inexistente_99999.db"
+    assert resolver_ruta_bd(ruta_falsa) == ruta_falsa
+
+
+def test_resolver_ruta_candidata_relativa_resuelve_correctamente():
+    """Valida que pasar 'epis_mentorias.db' resuelva la ruta absoluta existente en data/."""
+    ruta = resolver_ruta_bd("epis_mentorias.db")
+    assert os.path.isabs(ruta)
+    assert os.path.exists(ruta)
+    assert "data" in ruta
+
 

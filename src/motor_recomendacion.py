@@ -416,7 +416,7 @@ def recomendar_mentores(
 # ==============================================================================
 # EJEMPLO DE PRUEBA REAL
 # ==============================================================================
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     # Alumno novato de Ciclo I necesita ayuda en MATEMÁTICA I (INE-186)
     # Tags del alumno: dificultades en cálculo, álgebra y lógica
     # Disponibilidad deseada: Sábado de 08:00 - 10:30

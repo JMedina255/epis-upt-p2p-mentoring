@@ -259,3 +259,74 @@ def test_obtener_directorio_reportes_resuelve_ruta_existente():
     assert os.path.isabs(ruta)
     assert os.path.exists(ruta)
     assert os.path.basename(ruta) == "reportes"
+
+
+def test_directorio_reportes_constante_definida():
+    """Valida que la constante DIRECTORIO_REPORTES requerida por app_visualizador esté disponible."""
+    assert hasattr(gestor_reportes, "DIRECTORIO_REPORTES")
+    assert gestor_reportes.DIRECTORIO_REPORTES == "reportes"
+
+
+def test_generar_markdown_soporta_esquema_visualizador_streamlit():
+    """Valida que generar_markdown_reporte maneje de forma resiliente tanto el esquema canónico
+
+    como diccionarios con nombres de columnas de visualización provenientes de DataFrames de Streamlit.
+    """
+    datos_estilo_streamlit = {
+        "id_reporte": "REP-STREAMLIT-001",
+        "fecha_generacion": "2026-09-23 15:30:00",
+        "tutorado": {"nombre_completo": "Estudiante Streamlit"},
+        "solicitud": {"codigo_curso": "INE-186", "nombre_curso": "Cálculo I"},
+        "configuracion_algoritmo": {"pesos": {"alpha": 0.70, "beta": 0.20, "gamma": 0.10}},
+        "fase1_filtro_sql": {"total_candidatos_aptos": 1, "mentores_aptos": []},
+        "fase2_espacio_vectorial": {
+            "mediciones_angulares": [
+                {
+                    "Mentor": "Prof. Mentor",
+                    "Similitud Coseno (cos θ)": 0.9123,
+                    "Ángulo θ (Grados)": "24.2°",
+                    "Interpretación Geométrica": "🟢 Ángulo Estrecho",
+                    "Tags Coincidentes": "calculo, derivadas",
+                }
+            ]
+        },
+        "fase4_reranking_equidad": {
+            "desglose_calibracion": [
+                {
+                    "Rank Final": 1,
+                    "Rank Coseno Puro": 1,
+                    "Cambio de Posición": "⏺️ 0",
+                    "Mentor": "Prof. Mentor",
+                    "Sim Coseno (TF-IDF)": 0.9123,
+                    "Afinidad (0.7·Sim)": 0.6386,
+                    "Saturación (%)": "33%",
+                    "Penalización (-0.2·Sat)": -0.0667,
+                    "Bono Novedad (+0.1·Bono)": 0.0,
+                    "Puntaje Final": 0.5719,
+                }
+            ]
+        },
+        "top_k_recomendados": [
+            {
+                "mentor": "Prof. Mentor",
+                "ciclo": 9,
+                "puntaje_final": 0.5719,
+                "nota_en_curso": 18.0,
+                "similitud_coseno": 0.9123,
+                "angulo_grados": "24.2°",
+                "sesiones_activas": 1,
+                "max_cupos": 3,
+                "tags": "calculo",
+            }
+        ],
+        "telemetria": {"tiempo_inferencia_ms": 15.2},
+    }
+
+    markdown = generar_markdown_reporte(datos_estilo_streamlit)
+
+    assert "Reporte Experimental" in markdown
+    assert "Prof. Mentor" in markdown
+    assert "0.9123" in markdown
+    assert "0.5719" in markdown
+    assert "🟢 Ángulo Estrecho" in markdown
+

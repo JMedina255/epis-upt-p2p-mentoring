@@ -12,6 +12,9 @@ import os
 import re
 from typing import Any, Dict, List, Optional, Tuple
 
+DIRECTORIO_REPORTES: str = "reportes"
+
+
 def obtener_directorio_reportes() -> str:
     """Resuelve la ruta absoluta al directorio reportes/ en la raíz del proyecto."""
     candidatas = [
@@ -97,7 +100,16 @@ def generar_markdown_reporte(datos: Dict[str, Any]) -> str:
         md.append("| Mentor | Similitud Coseno ($\\cos\\theta$) | Ángulo $\\theta$ (Grados) | Interpretación Geométrica | Tags Coincidentes |")
         md.append("| :--- | :--- | :--- | :--- | :--- |")
         for a in angulos:
-            md.append(f"| {a.get('mentor')} | {a.get('similitud_coseno'):.4f} | {a.get('angulo_grados', 'N/A')} | {a.get('interpretacion', 'N/A')} | {a.get('tags_coincidentes', 'N/A')} |")
+            men = a.get("mentor") or a.get("Mentor", "N/A")
+            sim_val = a.get("similitud_coseno") if a.get("similitud_coseno") is not None else a.get("Similitud Coseno (cos θ)", 0.0)
+            try:
+                sim_str = f"{float(sim_val):.4f}"
+            except (ValueError, TypeError):
+                sim_str = str(sim_val)
+            ang = a.get("angulo_grados") or a.get("Ángulo θ (Grados)", "N/A")
+            interp = a.get("interpretacion") or a.get("Interpretación Geométrica", "N/A")
+            tags_c = a.get("tags_coincidentes") or a.get("Tags Coincidentes", "N/A")
+            md.append(f"| {men} | {sim_str} | {ang} | {interp} | {tags_c} |")
         md.append("")
 
     # 6. Fase 4: Load-Aware Re-ranking
@@ -110,10 +122,61 @@ def generar_markdown_reporte(datos: Dict[str, Any]) -> str:
         md.append("| Rank Final | Rank Coseno | Cambio | Mentor | Sim Coseno | Término Semántico | Término Saturación | Término Bono | Score Final |")
         md.append("| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |")
         for r in rerank:
+            rf = r.get("rank_final") or r.get("Rank Final", "N/A")
+            rc = r.get("rank_coseno") or r.get("Rank Coseno Puro", "N/A")
+            chg = r.get("cambio_pos") or r.get("Cambio de Posición", "=")
+            men = r.get("mentor") or r.get("Mentor", "N/A")
+
+            sim_val = r.get("similitud_coseno") if r.get("similitud_coseno") is not None else r.get("Sim Coseno (TF-IDF)", 0.0)
+            try:
+                sim_str = f"{float(sim_val):.4f}"
+            except (ValueError, TypeError):
+                sim_str = str(sim_val)
+
+            # Términos del score con soporte para claves canónicas y nombres de columnas Streamlit
+            tsim = r.get("term_sim")
+            if tsim is None:
+                for k, v in r.items():
+                    if "·sim" in k.lower() or "afinidad" in k.lower():
+                        tsim = v
+                        break
+            try:
+                tsim_val = float(tsim or 0.0)
+            except (ValueError, TypeError):
+                tsim_val = 0.0
+
+            tsat = r.get("term_sat")
+            if tsat is None:
+                for k, v in r.items():
+                    if "·sat" in k.lower() or "penaliz" in k.lower():
+                        tsat = v
+                        break
+            try:
+                tsat_val = float(tsat or 0.0)
+            except (ValueError, TypeError):
+                tsat_val = 0.0
+
+            tbono = r.get("term_bono")
+            if tbono is None:
+                for k, v in r.items():
+                    if "·bono" in k.lower() or "novedad" in k.lower():
+                        tbono = v
+                        break
+            try:
+                tbono_val = float(tbono or 0.0)
+            except (ValueError, TypeError):
+                tbono_val = 0.0
+
+            sc = r.get("puntaje_final") if r.get("puntaje_final") is not None else r.get("Puntaje Final", 0.0)
+            try:
+                sc_str = f"{float(sc):.4f}"
+            except (ValueError, TypeError):
+                sc_str = str(sc)
+
             md.append(
-                f"| #{r.get('rank_final')} | #{r.get('rank_coseno')} | {r.get('cambio_pos')} | "
-                f"{r.get('mentor')} | {r.get('similitud_coseno'):.4f} | +{r.get('term_sim'):.4f} | "
-                f"{r.get('term_sat'):.4f} | +{r.get('term_bono'):.4f} | **{r.get('puntaje_final'):.4f}** |"
+                f"| #{rf} | #{rc} | {chg} | "
+                f"{men} | {sim_str} | +{tsim_val:.4f} | "
+                f"{tsat_val:.4f} | +{tbono_val:.4f} | **{sc_str}** |"
             )
         md.append("")
 

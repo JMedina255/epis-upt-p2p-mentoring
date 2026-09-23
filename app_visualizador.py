@@ -702,10 +702,32 @@ with tab_guiado:
                         ],
                     },
                     "fase2_espacio_vectorial": {
-                        "mediciones_angulares": df_angulos,
+                        "mediciones_angulares": [
+                            {
+                                "mentor": a["Mentor"],
+                                "similitud_coseno": float(a["Similitud Coseno (cos θ)"]),
+                                "angulo_grados": str(a["Ángulo θ (Grados)"]),
+                                "interpretacion": str(a["Interpretación Geométrica"]),
+                                "tags_coincidentes": str(a["Tags Coincidentes"]),
+                            }
+                            for a in df_angulos
+                        ],
                     },
                     "fase4_reranking_equidad": {
-                        "desglose_calibracion": df_analisis_alg,
+                        "desglose_calibracion": [
+                            {
+                                "rank_final": int(r["Rank Final"]),
+                                "rank_coseno": int(r["Rank Coseno Puro"]),
+                                "cambio_pos": str(r["Cambio de Posición"]),
+                                "mentor": str(r["Mentor"]),
+                                "similitud_coseno": float(r["Sim Coseno (TF-IDF)"]),
+                                "term_sim": round(alpha * float(r["Sim Coseno (TF-IDF)"]), 4),
+                                "term_sat": round(-beta * (float(str(r["Saturación (%)"]).replace("%", "")) / 100.0), 4),
+                                "term_bono": float(r.get(f"Bono Novedad (+{gamma}·Bono)", 0.0)),
+                                "puntaje_final": float(r["Puntaje Final"]),
+                            }
+                            for r in df_analisis_alg
+                        ],
                     },
                     "top_k_recomendados": top_k_guiado,
                     "telemetria": {
