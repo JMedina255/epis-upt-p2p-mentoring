@@ -59,7 +59,7 @@ Ranking Top-K de mentores recomendados
 
 1. **Recepción de la solicitud:** El estudiante indica la materia en la que solicita acompañamiento, su día y franja horaria disponible, y una descripción o etiquetas de los temas de interés.
 2. **Filtrado determinista de elegibilidad:** Mediante consultas SQL relacionales sobre el historial académico, se seleccionan únicamente aquellos mentores que:
-   * Hayan aprobado la asignatura con una nota mayor o igual al umbral institucional ($\ge 14.0$).
+   * Hayan aprobado la asignatura con una nota mayor o igual al umbral académico configurado experimentalmente ($\ge 14.0$).
    * Tengan disponibilidad horaria explícita en el mismo día y franja solicitada.
    * Cuenten con cupos operativos disponibles ($\text{sesiones activas} < \text{máximo de cupos}$).
 3. **Cálculo de afinidad temática:** A partir del vocabulario y los intereses técnicos declarados por el estudiante y los mentores elegibles, se construye una representación vectorial (TF-IDF) y se evalúa su similitud angular mediante el coseno.
@@ -116,7 +116,7 @@ Donde cada componente representa:
 Para salvaguardar la privacidad estudiantil y permitir la validación controlada del algoritmo, el proyecto utiliza un conjunto de datos completamente sintético:
 
 * **Carácter sintético:** Todos los perfiles de estudiantes, mentores, cursos aprobados, notas y disponibilidades horarias fueron generados artificialmente mediante scripts procedurales.
-* **Generador reproducible:** El dataset se genera ejecutando [scripts/generar_bd_epis.py](file:///c:/Users/Admin/Desktop/Proyectos/AlgoritmoP2P/scripts/generar_bd_epis.py).
+* **Generador reproducible:** El dataset se genera ejecutando [scripts/generar_bd_epis.py](scripts/generar_bd_epis.py).
 * **Semilla fija:** El generador utiliza `random.seed(2026)`, lo que garantiza que la base de datos resultante (`epis_mentorias.db`) sea determinista y 100% reproducible en cualquier entorno.
 * **Inspiración académica institucional:** La estructura de asignaturas, códigos oficiales (ej. *INE-186*, *EG-181*), ciclos (I al X) y distribución de turnos (mañanas para ciclos iniciales, tardes/noches para ciclos superiores) toman como referencia la malla curricular de la Escuela Profesional de Ingeniería de Sistemas de la UPT.
 * **Alcance de los datos:** Los resultados y métricas observados en este prototipo corresponden exclusivamente al escenario experimental sintético y **no deben interpretarse como datos de estudiantes reales**.
@@ -211,7 +211,7 @@ python scripts/sync_docs.py
 
 ## 🧪 Pruebas
 
-El repositorio cuenta con una suite de pruebas progresivas en [tests/test_algoritmo_progresivo.py](file:///c:/Users/Admin/Desktop/Proyectos/AlgoritmoP2P/tests/test_algoritmo_progresivo.py) que valida formalmente el comportamiento de las etapas iniciales del motor:
+El repositorio cuenta con una suite de pruebas progresivas en [tests/test_algoritmo_progresivo.py](tests/test_algoritmo_progresivo.py) que valida formalmente el comportamiento de las etapas iniciales del motor:
 
 ### Pruebas de filtrado relacional (Fase 1 - SQL)
 * **Nota mínima estricta:** Comprueba que ningún candidato preseleccionado registre una nota menor a 14.0 en la materia solicitada.
@@ -250,17 +250,23 @@ Los valores a continuación corresponden a los parámetros utilizados en el esce
 
 ## 📊 Resultados experimentales (En construcción)
 
-La evaluación cuantitativa formal del sistema se encuentra actualmente en desarrollo. Para evitar conclusiones apresuradas, el impacto del algoritmo no se afirmará de manera anecdótica, sino mediante un protocolo experimental comparativo contra tres líneas base (*baselines*):
+La evaluación cuantitativa formal del sistema se encuentra actualmente en desarrollo. Para medir rigurosamente el aporte individual de cada componente de la función de puntuación (estudio de ablación para la tesis), se implementará un protocolo comparativo estructurado en tres líneas base directas:
 
-* **B0 (Línea base aleatoria):** Asignación aleatoria uniforme entre mentores que cumplen las restricciones duras.
-* **B1 (Línea base por rendimiento/popularidad):** Priorización orientada únicamente a la calificación previa del mentor o su demanda histórica, sin penalización por saturación.
-* **B2 (Similitud pura sin re-ranking):** Recomendación basada exclusivamente en similitud de contenido ($\alpha=1.0, \beta=0, \gamma=0$).
+* **B0 (Similitud pura):**
+  $$\text{score}(m) = \text{similarity}(u, m) \quad (\alpha=1.0, \, \beta=0.0, \, \gamma=0.0)$$
+  Evalúa la recomendación basándose exclusivamente en la afinidad temática léxica, sin control de saturación ni oportunidades a perfiles novatos.
+* **B1 (Similitud + Penalización por carga):**
+  $$\text{score}(m) = \alpha \cdot \text{similarity}(u, m) - \beta \cdot \text{load}(m) \quad (\alpha=0.70, \, \beta=0.20, \, \gamma=0.0)$$
+  Introduce el balance de carga operativa para mitigar la sobrecarga de mentores con alta demanda, aislando el impacto del término de saturación.
+* **B2 (Modelo propuesto completo: Similitud + Carga + Bono nuevo):**
+  $$\text{score}(m) = \alpha \cdot \text{similarity}(u, m) - \beta \cdot \text{load}(m) + \gamma \cdot \text{newcomer}(m) \quad (\alpha=0.70, \, \beta=0.20, \, \gamma=0.10)$$
+  Incorpora el incentivo para mentores sin historial activo, permitiendo medir cómo la combinación integral equilibra la distribución de asesorías y fomenta la rotación sin degradar la afinidad temática.
 
-Las métricas en proceso de instrumentación incluyen:
-1. **Balance de carga:** Coeficiente de variación y desviación estándar de tutorías asignadas por mentor disponible.
-2. **Tasa de saturación:** Porcentaje de mentores que operan al 100% de su capacidad frente a la demanda insatisfecha.
-3. **Tasa de inclusión de nuevos mentores:** Proporción de mentores novatos recomendados en el Top-K.
-4. **Preservación de afinidad:** Impacto en el puntaje promedio de similitud temática tras aplicar el re-ranking.
+Las métricas en proceso de instrumentación para comparar B0, B1 y B2 incluyen:
+1. **Balance y dispersión de carga:** Desviación estándar y coeficiente de variación de tutorías asignadas por mentor disponible.
+2. **Tasa de saturación operativa:** Porcentaje de mentores que alcanzan el 100% de su capacidad frente a la demanda insatisfecha.
+3. **Tasa de activación de nuevos mentores:** Proporción de mentores novatos recomendados en el Top-K y asignados con éxito.
+4. **Preservación de la afinidad temática:** Impacto en el puntaje promedio de similitud de coseno en el Top-K tras incorporar los términos de carga y oportunidad.
 
 ---
 
