@@ -66,3 +66,18 @@ def test_similarity_ortogonal_disjunta():
     similitudes = calcular_similitud_contenido(tags_estudiante, tags_mentores)
     assert len(similitudes) == 1
     assert math.isclose(similitudes[0], 0.0, abs_tol=1e-5)
+
+
+def test_similarity_gradiente_afinidad():
+    """Asegura que un mentor con mayor solapamiento léxico obtenga mayor similitud."""
+    tags_estudiante = "python sql machine_learning"
+    tags_mentores = [
+        "python sql machine_learning deep_learning",  # Alta afinidad
+        "python scrum git",                           # Media-baja afinidad
+        "redaccion_academica filosofia etica",        # Nula afinidad
+    ]
+
+    similitudes = calcular_similitud_contenido(tags_estudiante, tags_mentores)
+    assert similitudes[0] > similitudes[1] > similitudes[2]
+    assert math.isclose(similitudes[2], 0.0, abs_tol=1e-5)
+

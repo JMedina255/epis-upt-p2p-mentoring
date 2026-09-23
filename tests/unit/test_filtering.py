@@ -86,3 +86,62 @@ def test_filtrado_sql_cortocircuito_horario_incompatible(test_db):
         db_path=test_db,
     )
     assert candidatos == []
+
+
+def test_filtrado_sql_coincidencia_horaria(test_db):
+    """Valida que todos los mentores devueltos tengan disponibilidad efectiva en día y franja."""
+    import sqlite3
+    dia = "Sabado"
+    franja = "08:00 - 10:30"
+    candidatos = filtrar_mentores_sql(
+        codigo_curso="INE-186",
+        dia=dia,
+        franja_horaria=franja,
+        nota_minima=14.0,
+        db_path=test_db,
+    )
+    conn = sqlite3.connect(test_db)
+    cursor = conn.cursor()
+    for c in candidatos:
+        mentor_id = c[0]
+        cursor.execute(
+            "SELECT COUNT(*) FROM disponibilidad WHERE id_estudiante = ? AND dia = ? AND franja_horaria = ?",
+            (mentor_id, dia, franja),
+        )
+        count = cursor.fetchone()[0]
+        assert count > 0, f"Mentor {mentor_id} no registra disponibilidad en {dia} {franja}"
+    conn.close()
+
+
+def test_filtrado_sql_max_cupos_cero(tmp_path):
+    """Valida que un mentor con max_cupos_mentor = 0 sea estrictamente ignorado por SQL."""
+    import sqlite3
+    db_file = tmp_path / "sql_cupos_cero.db"
+    conn = sqlite3.connect(db_file)
+    cursor = conn.cursor()
+    cursor.execute("""
+        CREATE TABLE estudiantes (
+            id INTEGER PRIMARY KEY, nombres TEXT, apellidos TEXT, ciclo_actual INTEGER,
+            tags_interes TEXT, sesiones_activas INTEGER, max_cupos_mentor INTEGER,
+            es_nuevo_mentor INTEGER, rol TEXT
+        )
+    """)
+    cursor.execute("""
+        CREATE TABLE kardex_notas (
+            id_estudiante INTEGER, codigo_curso TEXT, nota REAL, condicion TEXT
+        )
+    """)
+    cursor.execute("""
+        CREATE TABLE disponibilidad (
+            id_estudiante INTEGER, dia TEXT, franja_horaria TEXT
+        )
+    """)
+    cursor.execute("INSERT INTO estudiantes VALUES (1, 'SinCupo', 'Test', 8, 'python', 0, 0, 0, 'MENTOR')")
+    cursor.execute("INSERT INTO kardex_notas VALUES (1, 'INE-186', 18.0, 'APROBADO')")
+    cursor.execute("INSERT INTO disponibilidad VALUES (1, 'Sabado', '08:00 - 10:30')")
+    conn.commit()
+    conn.close()
+
+    candidatos = filtrar_mentores_sql("INE-186", "Sabado", "08:00 - 10:30", db_path=str(db_file))
+    assert candidatos == [], "Un mentor con max_cupos_mentor = 0 nunca debe superar el filtro SQL"
+
