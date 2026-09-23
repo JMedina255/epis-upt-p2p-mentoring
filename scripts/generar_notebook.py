@@ -14,7 +14,7 @@ notebook = {
                 "# 🎓 Sistema Web P2P de Mentorías Académicas - EPIS UPT (2026-II)\n",
                 "## Cuaderno Interactivo y Visualizador del Algoritmo de Recomendación\n",
                 "\n",
-                "Este cuaderno documenta e ilustra de manera estructurada y reproducible el funcionamiento del **motor de recomendación híbrido** en sus 5 fases metodológicas, validado sobre la cohorte real de **350 estudiantes** (40 mentores avanzados y 310 tutorados) de la EPIS-UPT.\n",
+                "Este cuaderno documenta e ilustra de manera estructurada y reproducible el funcionamiento del **motor de recomendación híbrido** en sus 5 fases metodológicas, validado sobre la cohorte sintética experimental de **350 estudiantes** (40 mentores avanzados y 310 tutorados) de la EPIS-UPT.\n",
                 "\n",
                 "---\n",
                 "### Formulación Matemática del Modelo:\n",
@@ -23,7 +23,7 @@ notebook = {
                 "Donde los pesos definidos en `system_rules.json` son:\n",
                 "* $\\alpha = 0.70$: Afinidad semántica por coseno.\n",
                 "* $\\beta = 0.20$: Penalización por saturación de cupos.\n",
-                "* $\\gamma = 0.10$: Bono de acción afirmativa para mentores novatos."
+                "* $\\gamma = 0.10$: Bono experimental de oportunidad para mentores novatos."
             ]
         },
         {
@@ -203,7 +203,7 @@ notebook = {
             "cell_type": "markdown",
             "metadata": {},
             "source": [
-                "## 4. FASE 4 - Re-ranking por Equidad Distributiva (Fairness Calibration)\n",
+                "## 4. FASE 4 - Load-Aware Re-ranking\n",
                 "Ajuste del puntaje final aplicando penalización por saturación operativa y bonificación para mentores novatos."
             ]
         },
@@ -239,7 +239,7 @@ notebook = {
             "cell_type": "markdown",
             "metadata": {},
             "source": [
-                "## 5. FASE 3 / 5 - Selección Final Top-K\n",
+                "## 5. FASE 5 - Selección Final Top-K\n",
                 "Entrega asistida de los $K=3$ mejores candidatos para su presentación en el frontend web interactivo."
             ]
         },

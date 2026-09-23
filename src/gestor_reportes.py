@@ -100,8 +100,8 @@ def generar_markdown_reporte(datos: Dict[str, Any]) -> str:
             md.append(f"| {a.get('mentor')} | {a.get('similitud_coseno'):.4f} | {a.get('angulo_grados', 'N/A')} | {a.get('interpretacion', 'N/A')} | {a.get('tags_coincidentes', 'N/A')} |")
         md.append("")
 
-    # 6. Fase 4: Re-ranking por Equidad
-    md.append("## 6. Fase 4: Calibración por Equidad Distributiva (Re-ranking)")
+    # 6. Fase 4: Load-Aware Re-ranking
+    md.append("## 6. Fase 4: Re-ranking Sensible a la Carga (Load-Aware Re-ranking)")
     md.append("Fórmula aplicada:")
     md.append(f"$$\\text{{ScoreFinal}}(m) = {pesos.get('alpha', 0.70):.2f} \\cdot \\text{{SimCoseno}} - {pesos.get('beta', 0.20):.2f} \\cdot \\text{{Saturacion}} + {pesos.get('gamma', 0.10):.2f} \\cdot \\text{{BonoNuevo}}$$\n")
     

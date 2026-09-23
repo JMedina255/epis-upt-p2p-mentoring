@@ -499,7 +499,7 @@ def poblar_datos(cursor, total_estudiantes=350):
 
     estudiantes_json = []
 
-    # Cohorte exacta para entorno real piloto EPIS-UPT:
+    # Cohorte sintética para escenario experimental piloto EPIS-UPT:
     # 40 Mentores (10 por cada ciclo avanzado: VII, VIII, IX, X)
     # 310 Tutorados (60 en Ciclo 1, 60 en Ciclo 2, 60 en Ciclo 3, 60 en Ciclo 4, 35 en Ciclo 5, 35 en Ciclo 6)
     perfiles = []

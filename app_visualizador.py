@@ -322,7 +322,7 @@ st.sidebar.markdown(f"""
 st.markdown('<div class="main-title">🎓 Plataforma de Visualización y Análisis Algorítmico P2P</div>', unsafe_allow_html=True)
 st.markdown(
     '<div class="sub-title">'
-    'EPIS-UPT 2026-II | Inferencia Two-Stage con Filtro Relacional SQL, TF-IDF + Coseno y Re-ranking por Equidad'
+    'EPIS-UPT 2026-II | Inferencia Two-Stage con Filtro Relacional SQL, TF-IDF + Coseno y Load-Aware Re-ranking'
     '</div>',
     unsafe_allow_html=True,
 )
@@ -334,7 +334,7 @@ tab_guiado, tab_directorio, tab_simulador, tab_fase1, tab_fase2, tab_fase4, tab_
     "⚡ 3. Simulador Rápido por Curso",
     "🔍 4. Fase 1: Filtro Determinista (SQL)",
     "📐 5. Fase 2: Similitud Coseno (TF-IDF)",
-    "⚖️ 6. Fase 4: Re-ranking & Equidad",
+    "⚖️ 6. Fase 4: Load-Aware Re-ranking",
     "📊 7. Cohorte Completa (350)",
     "📁 8. Repositorio de Reportes",
 ])
@@ -346,7 +346,7 @@ tab_guiado, tab_directorio, tab_simulador, tab_fase1, tab_fase2, tab_fase4, tab_
 with tab_guiado:
     st.subheader("🎯 Emparejamiento Centrado en el Estudiante Tutorado")
     st.markdown("""
-    Selecciona un alumno tutorado de la cohorte real para precargar automáticamente su perfil,
+    Selecciona un alumno tutorado de la cohorte sintética experimental para precargar automáticamente su perfil,
     su historial de calificaciones (Kardex) y sus horarios libres registrados.
     """)
 
@@ -926,10 +926,10 @@ with tab_fase2:
 
 
 # ==================================================================================================
-# TAB 6: Fase 4 (Re-ranking & Equidad)
+# TAB 6: Fase 4 (Load-Aware Re-ranking)
 # ==================================================================================================
 with tab_fase4:
-    st.subheader("⚖️ Calibración por Equidad Distributiva (Fairness Calibration)")
+    st.subheader("⚖️ Balance de Carga y Oportunidad (Load-Aware Re-ranking)")
     st.latex(
         rf"\text{{PuntajeFinal}}(m) = {alpha:.2f} \cdot \text{{SimCoseno}} - {beta:.2f} \cdot \text{{Saturacion}} + {gamma:.2f} \cdot \text{{BonoNuevo}}"
     )
