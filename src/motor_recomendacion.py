@@ -1,7 +1,7 @@
 """
 ====================================================================================================
 SISTEMA WEB P2P DE MENTORÍAS ACADÉMICAS - EPIS UPT (2026-II)
-MOTOR DE RECOMENDACIÓN HÍBRIDO (TWO-STAGE RECOMMENDATION & FAIRNESS RE-RANKING)
+MOTOR DE RECOMENDACIÓN HÍBRIDO (TWO-STAGE RECOMMENDATION & LOAD-AWARE RE-RANKING)
 ====================================================================================================
 
 Contexto Metodológico y Arquitectónico:
@@ -25,9 +25,9 @@ Arquitectura del Pipeline en Etapas (Two-Stage Architecture):
      de los mentores preseleccionados utilizando Scikit-Learn.
    - Computa la similitud de coseno (proyección angular normalizada en el rango [0.0, 1.0]).
 
-3. ETAPA DE EQUIDAD DISTRIBUTIVA (Fairness Re-ranking):
-   - Evita la centralización de demanda ("efecto superstar") y la sobrecarga operativa de mentores
-     populares, a la vez que estimula la participación de mentores recién inscritos.
+3. ETAPA DE RE-RANKING SENSIBLE A LA CARGA (Load-Aware Re-ranking):
+   - Mitiga la sobrecarga operativa de mentores con alta demanda y estimula la rotación y activación
+     de mentores recién incorporados sin historial previo.
    - Formulación Matemática:
        PuntajeFinal(m) = alpha * SimCoseno(u, m) - beta * (SesionesActivas(m) / MaxCupos(m)) + gamma * BonoNuevo(m)
      donde:
@@ -39,8 +39,8 @@ División Modular por Fases de Desarrollo y Verificación:
 -------------------------------------------------------
 - FASE 1: Filtrado Determinista (SQL Hard Rules) -> Función: filtrar_mentores_sql()
 - FASE 2: Espacio Vectorial y Contenido (TF-IDF + Coseno) -> Función: calcular_similitud_contenido()
-- FASE 3: Integración Two-Stage + K-NN -> Función: recomendar_mentores()
-- FASE 4: Re-ranking por Equidad (Fairness Calibration) -> Función: aplicar_reranking_equidad()
+- FASE 3: Integración Two-Stage + Top-K Ranking -> Función: recomendar_mentores()
+- FASE 4: Re-ranking Sensible a la Carga (Load-Aware Re-ranking) -> Función: aplicar_reranking_equidad()
 - FASE 5: Auditoría y Experimentación -> Ejecución y telemetría de resultados.
 
 Restricciones No Negociables:
@@ -80,9 +80,9 @@ def validar_reglas_sistema(config: Dict[str, Any]) -> Dict[str, Any]:
     """Valida la consistencia lógica y de tipos de las reglas del sistema.
     
     Verifica que:
-      - nota_minima_mentor sea un número no negativo.
+      - nota_minima_mentor esté en la escala vigesimal [0.0, 20.0].
       - top_k_recomendados sea un entero >= 1.
-      - alpha_coseno, beta_saturacion y gamma_bono_nuevo sean números no negativos.
+      - alpha_coseno, beta_saturacion y gamma_bono_nuevo estén en el rango [0.0, 1.0].
       
     Args:
         config: Diccionario con la configuración del sistema.
@@ -96,33 +96,35 @@ def validar_reglas_sistema(config: Dict[str, Any]) -> Dict[str, Any]:
     if not isinstance(config, dict):
         raise ValueError("La configuración debe ser un diccionario.")
 
-    # Validación de nota mínima
+    # Validación de nota mínima en escala vigesimal [0, 20]
     nota_min = config.get("nota_minima_mentor")
-    if nota_min is not None and (not isinstance(nota_min, (int, float)) or nota_min < 0):
-        raise ValueError(f"nota_minima_mentor debe ser un número no negativo, recibido: {nota_min}")
+    if nota_min is not None and (not isinstance(nota_min, (int, float)) or not (0 <= nota_min <= 20)):
+        raise ValueError(
+            f"nota_minima_mentor debe estar en la escala vigesimal [0, 20], recibido: {nota_min}"
+        )
 
     # Validación de top_k
     top_k = config.get("top_k_recomendados")
     if top_k is not None and (not isinstance(top_k, int) or top_k < 1):
         raise ValueError(f"top_k_recomendados debe ser un entero mayor o igual a 1, recibido: {top_k}")
 
-    # Validación de pesos algorítmicos
+    # Validación de pesos algorítmicos en el rango normalizado [0, 1]
     pesos = config.get("pesos_algoritmo")
     if pesos is not None:
         if not isinstance(pesos, dict):
             raise ValueError("pesos_algoritmo debe ser un diccionario.")
 
         alpha = pesos.get("alpha_coseno")
-        if alpha is not None and (not isinstance(alpha, (int, float)) or alpha < 0):
-            raise ValueError(f"alpha_coseno debe ser un número no negativo, recibido: {alpha}")
+        if alpha is not None and (not isinstance(alpha, (int, float)) or not (0 <= alpha <= 1)):
+            raise ValueError(f"alpha_coseno debe estar en el rango [0, 1], recibido: {alpha}")
 
         beta = pesos.get("beta_saturacion")
-        if beta is not None and (not isinstance(beta, (int, float)) or beta < 0):
-            raise ValueError(f"beta_saturacion debe ser un número no negativo, recibido: {beta}")
+        if beta is not None and (not isinstance(beta, (int, float)) or not (0 <= beta <= 1)):
+            raise ValueError(f"beta_saturacion debe estar en el rango [0, 1], recibido: {beta}")
 
         gamma = pesos.get("gamma_bono_nuevo")
-        if gamma is not None and (not isinstance(gamma, (int, float)) or gamma < 0):
-            raise ValueError(f"gamma_bono_nuevo debe ser un número no negativo, recibido: {gamma}")
+        if gamma is not None and (not isinstance(gamma, (int, float)) or not (0 <= gamma <= 1)):
+            raise ValueError(f"gamma_bono_nuevo debe estar en el rango [0, 1], recibido: {gamma}")
 
     return config
 
@@ -278,17 +280,17 @@ def aplicar_reranking_equidad(
     beta: float = 0.20,
     gamma: float = 0.10,
 ) -> List[Dict[str, Any]]:
-    """FASE 4: RE-RANKING POR EQUIDAD (FAIRNESS CALIBRATION).
+    """FASE 4: RE-RANKING SENSIBLE A LA CARGA (LOAD-AWARE RE-RANKING).
     
-    Ajusta la puntuación bruta de similitud para balancear la carga operativa y dar oportunidad
-    a nuevos talentos pedagógicos:
+    Ajusta la puntuación bruta de similitud para mitigar la saturación operativa y otorgar
+    oportunidades de activación a nuevos mentores:
     
       PuntajeFinal(m) = alpha * SimCoseno(u, m) - beta * (SesionesActivas / MaxCupos) + gamma * BonoNuevo
       
-    Componentes de la calibración:
-      * alpha * SimCoseno: Recompensa la pertinencia temática.
+    Componentes del re-ranking:
+      * alpha * SimCoseno: Recompensa la pertinencia y afinidad temática.
       * - beta * (SesionesActivas / MaxCupos): Penalización proporcional a la carga de trabajo.
-      * + gamma * BonoNuevo: Acción afirmativa para mentores sin tutorías previas.
+      * + gamma * BonoNuevo: Bono de oportunidad para mentores sin tutorías previas.
       
     Args:
         mentores_candidatos: Lista de tuplas con información relacional de los mentores aptos.
@@ -355,7 +357,7 @@ def recomendar_mentores(
       1. Carga dinámica de parámetros desde la configuración central.
       2. Filtrado duro SQL con descarte inmediato si el conjunto resultante es vacío (Short-circuit).
       3. Vectorización de contenido y similitud de coseno con Scikit-Learn.
-      4. Re-ranking por equidad distributiva.
+      4. Re-ranking sensible a la carga (Load-aware re-ranking).
       5. Selección de los Top-K mejores candidatos para renderizado asistido en el frontend web.
       
     Args:
@@ -372,6 +374,9 @@ def recomendar_mentores(
     # Carga de parámetros desde la Fuente Única de Verdad (SSOT)
     reglas = cargar_reglas_sistema()
     k_final = top_k if top_k is not None else reglas.get("top_k_recomendados", 3)
+    if not isinstance(k_final, int) or k_final < 1:
+        raise ValueError("top_k debe ser un entero mayor o igual a 1")
+
     nota_min = float(reglas.get("nota_minima_mentor", 14.0))
     pesos = reglas.get("pesos_algoritmo", {})
     alpha = float(pesos.get("alpha_coseno", 0.70))
@@ -395,7 +400,7 @@ def recomendar_mentores(
     textos_mentores = [m[4] for m in mentores_candidatos]
     similitudes = calcular_similitud_contenido(tags_estudiante, textos_mentores)
 
-    # FASE 4: Re-ranking por Equidad
+    # FASE 4: Re-ranking sensible a la carga (Load-aware re-ranking)
     ranking = aplicar_reranking_equidad(
         mentores_candidatos=mentores_candidatos,
         similitudes=similitudes,

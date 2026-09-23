@@ -75,3 +75,60 @@ def test_config_json_corrupto_lanza_error(tmp_path):
 
     with pytest.raises(ValueError, match="[Ee]rror.*(JSON|decodificar|sintaxis)"):
         cargar_reglas_sistema(str(archivo_corrupto))
+
+
+def test_config_alpha_mayor_a_uno_lanza_error(tmp_path):
+    """Valida que alpha_coseno > 1.0 (ej. 900) emita un ValueError comprensible."""
+    config = {
+        "nota_minima_mentor": 14,
+        "top_k_recomendados": 3,
+        "pesos_algoritmo": {"alpha_coseno": 900.0, "beta_saturacion": 0.20, "gamma_bono_nuevo": 0.10},
+    }
+    archivo = tmp_path / "bad_alpha_high.json"
+    archivo.write_text(json.dumps(config), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="alpha_coseno.*rango"):
+        cargar_reglas_sistema(str(archivo))
+
+
+def test_config_beta_mayor_a_uno_lanza_error(tmp_path):
+    """Valida que beta_saturacion > 1.0 (ej. 450) emita un ValueError comprensible."""
+    config = {
+        "nota_minima_mentor": 14,
+        "top_k_recomendados": 3,
+        "pesos_algoritmo": {"alpha_coseno": 0.70, "beta_saturacion": 450.0, "gamma_bono_nuevo": 0.10},
+    }
+    archivo = tmp_path / "bad_beta_high.json"
+    archivo.write_text(json.dumps(config), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="beta_saturacion.*rango"):
+        cargar_reglas_sistema(str(archivo))
+
+
+def test_config_gamma_mayor_a_uno_lanza_error(tmp_path):
+    """Valida que gamma_bono_nuevo > 1.0 (ej. 200) emita un ValueError comprensible."""
+    config = {
+        "nota_minima_mentor": 14,
+        "top_k_recomendados": 3,
+        "pesos_algoritmo": {"alpha_coseno": 0.70, "beta_saturacion": 0.20, "gamma_bono_nuevo": 200.0},
+    }
+    archivo = tmp_path / "bad_gamma_high.json"
+    archivo.write_text(json.dumps(config), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="gamma_bono_nuevo.*rango"):
+        cargar_reglas_sistema(str(archivo))
+
+
+def test_config_nota_minima_fuera_de_escala_vigesimal_lanza_error(tmp_path):
+    """Valida que nota_minima_mentor fuera de [0, 20] (ej. 150 o -1) emita un ValueError."""
+    config_alta = {
+        "nota_minima_mentor": 150,  # Inválido en escala vigesimal
+        "top_k_recomendados": 3,
+        "pesos_algoritmo": {"alpha_coseno": 0.70, "beta_saturacion": 0.20, "gamma_bono_nuevo": 0.10},
+    }
+    archivo = tmp_path / "bad_nota_high.json"
+    archivo.write_text(json.dumps(config_alta), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="nota_minima_mentor.*vigesimal"):
+        cargar_reglas_sistema(str(archivo))
+

@@ -183,3 +183,30 @@ def test_pipeline_top_k_uno_restringe_salida(pipeline_db):
     )
     assert len(recomendaciones) == 1
     assert recomendaciones[0]["id"] == 1
+
+
+def test_pipeline_top_k_cero_lanza_error(pipeline_db):
+    """Valida que pasar top_k = 0 a recomendar_mentores lance ValueError descriptivo."""
+    with pytest.raises(ValueError, match="top_k debe ser un entero mayor o igual a 1"):
+        recomendar_mentores(
+            codigo_curso_solicitado="INE-186",
+            tags_estudiante="calculo",
+            dia_preferido="Sabado",
+            franja_preferida="08:00 - 10:30",
+            top_k=0,
+            db_path=pipeline_db,
+        )
+
+
+def test_pipeline_top_k_negativo_lanza_error(pipeline_db):
+    """Valida que pasar top_k < 0 (ej. -1) a recomendar_mentores lance ValueError en lugar de slicing anómalo."""
+    with pytest.raises(ValueError, match="top_k debe ser un entero mayor o igual a 1"):
+        recomendar_mentores(
+            codigo_curso_solicitado="INE-186",
+            tags_estudiante="calculo",
+            dia_preferido="Sabado",
+            franja_preferida="08:00 - 10:30",
+            top_k=-1,
+            db_path=pipeline_db,
+        )
+

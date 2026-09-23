@@ -46,7 +46,7 @@ Solicitud del estudiante
      ↓
 Filtrado de candidatos elegibles (Reglas deterministas)
      ↓
-Cálculo de similitud temática (Modelado de contenipydo)
+Cálculo de similitud temática (Modelado de contenido)
      ↓
 Ajuste por carga y oportunidad (Load-aware re-ranking)
      ↓
@@ -148,10 +148,20 @@ AlgoritmoP2P/
 │   ├── motor_recomendacion.py      # Núcleo algorítmico (Filtro SQL + TF-IDF + Load-aware re-ranking + Top-K)
 │   └── gestor_reportes.py          # Subsistema de persistencia y exportación de reportes
 ├── tests/
-│   └── test_algoritmo_progresivo.py # Suite de pruebas unitarias (Fases 1 y 2)
+│   ├── conftest.py                 # Fixtures de Pytest (base SQLite temporal y aislada)
+│   ├── unit/                       # Pruebas unitarias modulares
+│   │   ├── test_config.py          # Validación de parámetros y JSON
+│   │   ├── test_filtering.py       # Filtrado determinista relacional SQL
+│   │   ├── test_similarity.py      # Espacio vectorial TF-IDF y casos borde de vocabulario
+│   │   └── test_reranking.py       # Load-aware re-ranking, saturación, bono y Top-K
+│   ├── integration/                # Pruebas de integración del pipeline completo
+│   │   └── test_recommendation_pipeline.py # Flujo end-to-end con candidatos controlados
+│   └── test_algoritmo_progresivo.py # Runner histórico progresivo (legacy)
 ├── app_visualizador.py             # Aplicación interactiva de simulación web (Streamlit)
-├── .gitignore                      # Exclusiones de temporales y cachés
-├── requirements.txt                # Dependencias declaradas del entorno
+├── pytest.ini                      # Configuración del entorno de pruebas Pytest
+├── requirements.txt                # Dependencias de producción/aplicación
+├── requirements-dev.txt            # Dependencias de desarrollo y testing (Pytest)
+├── .gitignore                      # Exclusiones de temporales, cachés y artefactos
 └── README.md                       # Documentación principal del repositorio
 ```
 
@@ -176,7 +186,11 @@ source venv/bin/activate
 
 ### 3. Instalar dependencias
 ```bash
+# Dependencias principales de la aplicación:
 pip install -r requirements.txt
+
+# Dependencias para desarrollo y ejecución de pruebas:
+pip install -r requirements-dev.txt
 ```
 
 ---
@@ -189,8 +203,18 @@ Inicia la interfaz de experimentación interactiva para simular peticiones de tu
 streamlit run app_visualizador.py
 ```
 
-### Pruebas automatizadas
-Ejecuta la suite de pruebas unitarias existente:
+### Pruebas automatizadas (Pytest)
+Ejecuta la suite completa de pruebas unitarias e integración:
+```bash
+pytest
+```
+
+*Opcional (con detalle por test y reporte de cobertura):*
+```bash
+pytest -v --cov=src
+```
+
+*Runner progresivo histórico (Legacy):*
 ```bash
 python tests/test_algoritmo_progresivo.py
 ```
@@ -211,21 +235,27 @@ python scripts/sync_docs.py
 
 ## 🧪 Pruebas
 
-El repositorio cuenta con una suite de pruebas progresivas en [tests/test_algoritmo_progresivo.py](tests/test_algoritmo_progresivo.py) que valida formalmente el comportamiento de las etapas iniciales del motor:
+El repositorio implementa una suite de pruebas estructurada y modular con **Pytest**, desacoplada de la base de datos de producción mediante fixtures temporales aisladas:
 
-### Pruebas de filtrado relacional (Fase 1 - SQL)
-* **Nota mínima estricta:** Comprueba que ningún candidato preseleccionado registre una nota menor a 14.0 en la materia solicitada.
-* **Control de cupos disponibles:** Verifica que los mentores cuya carga activa alcance o supere su cupo máximo queden excluidos.
-* **Coincidencia horaria:** Confirma que todos los candidatos devueltos tengan disponibilidad efectiva en el día y franja horaria requeridos.
-* **Cortocircuito ante ausencia de candidatos:** Evalúa que ante cursos inexistentes o sin mentores aptos el motor retorne una lista vacía de forma limpia y sin errores de ejecución.
+```text
+tests/
+├── conftest.py                             # Fixture global 'test_db' con base SQLite temporal aislada
+├── unit/
+│   ├── test_config.py                      # Validación de tipos, rangos [0,1], escala vigesimal y JSON
+│   ├── test_filtering.py                   # Filtro relacional SQL (notas, cupos, disponibilidad)
+│   ├── test_similarity.py                  # Espacio vectorial TF-IDF y resiliencia ante vocabulario vacío
+│   └── test_reranking.py                   # Load-aware re-ranking, saturación, bono y Top-K
+├── integration/
+│   └── test_recommendation_pipeline.py     # Flujo integral end-to-end con candidatos controlados
+└── test_algoritmo_progresivo.py            # Runner histórico original de verificación progresiva
+```
 
-### Pruebas de similitud vectorial (Fase 2 - TF-IDF y Coseno)
-* **Similitud idéntica:** Asegura que cadenas de tags equivalentes produzcan una similitud de coseno exactamente igual a 1.0.
-* **Vocabularios disjuntos:** Valida que vocabularios completamente ortogonales/disjuntos resulten en una similitud de 0.0.
-* **Gradiente de afinidad:** Verifica que a mayor coincidencia de términos técnicos, el puntaje de similitud sea monótonamente superior.
-* **Conjunto de candidatos vacío:** Garantiza el manejo correcto y seguro ante listas vacías de candidatos en la vectorización.
-
-> **Nota:** La cobertura actual se concentra en la validación determinista de las Fases 1 y 2. La cobertura integral de todo el pipeline y pruebas de integración continua se encuentran contempladas en el roadmap del proyecto.
+### Cobertura de verificación por subsistema
+* **Validación de Configuración (`test_config.py`):** Valida la carga defensiva desde `system_rules.json`, controlando que las notas pertenezcan a la escala vigesimal $[0, 20]$, los hiperparámetros pertenezcan a $[0, 1]$, `top_k \ge 1` y emitiendo excepciones comprensibles ante parámetros corruptos o fuera de rango.
+* **Filtrado relacional determinista (`test_filtering.py`):** Evalúa sobre una base de datos temporal que ningún mentor con nota $< 14.0$, horario incompatible o cupos agotados (`sesiones \ge max_cupos` o `max_cupos = 0`) sea preseleccionado, además del cortocircuito ante cero candidatos.
+* **Similitud vectorial y casos borde (`test_similarity.py`):** Verifica similitud idéntica (1.0), ortogonal/disjunta (0.0), gradiente léxico y respuesta segura sin excepciones ante solicitudes con tags vacíos o vocabularios globales sin términos.
+* **Re-ranking sensible a la carga y Top-K (`test_reranking.py`):** Comprueba que la penalización por saturación ($\beta$) y el bono de oportunidad ($\gamma$) operen de acuerdo al modelo, valida el aislamiento con $\gamma = 0$, la protección contra división por cero si `max_cupos = 0`, el ordenamiento descendente estricto y el dimensionamiento Top-K.
+* **Integración del pipeline completo (`test_recommendation_pipeline.py`):** Simula el flujo completo (Solicitud $\to$ SQL $\to$ TF-IDF $\to$ Re-ranking $\to$ Top-K) con un escenario de 4 candidatos donde 1 se descarta por nota, 1 por horario y los 2 aptos se clasifican en el orden esperado, validando además el rechazo ante `top_k \le 0`.
 
 ---
 
@@ -291,7 +321,7 @@ El reconocimiento explícito de las limitaciones del proyecto es parte del rigor
 - [x] Interfaz web interactiva en Streamlit con visualización angular y reportes
 - [x] Suite de pruebas progresivas unitarias (Fases 1 y 2)
 - [x] Script automatizado de generación de dataset sintético reproducible
-- [ ] Suite de pruebas completa con `pytest`
+- [x] Suite de pruebas unitarias e integración con `pytest` (aislamiento con base SQLite temporal)
 - [ ] Pipeline de Integración Continua (CI) mediante GitHub Actions
 - [ ] Experimentación sistemática y calibración de pesos $\alpha$, $\beta$ y $\gamma$
 - [ ] Implementación de baselines comparativos (B0, B1, B2)
