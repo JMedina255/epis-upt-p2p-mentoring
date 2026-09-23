@@ -4,79 +4,112 @@
 ---
 
 ### 1. Justificación y Alcance del Proyecto
-El sistema aborda la problemática de retención y rendimiento estudiantil en la Escuela Profesional de Ingeniería de Sistemas de la Universidad Privada de Tacna (EPIS-UPT), donde coexisten aproximadamente 350 estudiantes matriculados. El propósito central no es diseñar un algoritmo matemático desde cero, sino **implementar un motor de recomendación híbrido** que optimice el emparejamiento bidireccional entre estudiantes de ciclos avanzados (mentores) y estudiantes de ciclos iniciales (tutorados)[cite: 6, 8, 10].
+El sistema aborda la problemática de retención y rendimiento estudiantil en la Escuela Profesional de Ingeniería de Sistemas de la Universidad Privada de Tacna (EPIS-UPT), orientándose a una población estudiantil de aproximadamente 350 matriculados. El propósito central no es diseñar un algoritmo de aprendizaje profundo complejo desde cero, sino **implementar un pipeline de recomendación en dos etapas (Two-Stage Recommendation Pipeline)** que optimice el emparejamiento bidireccional entre estudiantes de ciclos avanzados (mentores) y estudiantes de ciclos iniciales (tutorados).
 
-El alcance del proyecto es **exclusivamente una plataforma web**, centralizando su lógica de inferencia en un microservicio/script en Python conectado a la infraestructura de persistencia[cite: 5, 7].
+El alcance del proyecto es **exclusivamente una plataforma web**, centralizando su lógica de inferencia en un motor modular en Python conectado a la infraestructura de persistencia relacional.
 
 ---
 
 ### 2. Decisiones Técnicas Fundamentales
 
-#### 2.1. Estrategia de Ingesta de Datos Académicos (Kardex)
-Frente al dilema entre *Web Scraping de credenciales* y *Carga Institucional*:
-* **Riesgo del Scraping Directo:** Requerir el usuario y contraseña institucional del estudiante en una aplicación de terceros transgrede los principios de seguridad de la información y el principio de consentimiento informado de la Ley N° 29733 (Ley de Protección de Datos Personales de Perú)[cite: 5]. Asimismo, la fragilidad ante cambios en la intranet universitaria vuelve inestable el sistema.
-* **Solución Implementada:**
-  1. **Vía Primaria (Piloto):** Carga masiva por el Administrador de Tutoría de la EPIS mediante plantillas estructuradas en Excel (`.xlsx` o `.csv`).
-  2. **Vía Secundaria (Autoservicio Seguro):** Parser en backend para que el estudiante suba directamente su reporte de notas oficial en PDF descargado de la intranet, extrayendo las calificaciones sin almacenar contraseñas[cite: 5].
+#### 2.1. Estrategia Prevista de Ingesta de Datos Académicos (Kardex)
+Frente al dilema entre *Web Scraping de credenciales* y mecanismos institucionales seguros:
+* **Riesgo del Scraping Directo:** Requerir el usuario y contraseña institucional del estudiante en una aplicación transgrede los principios de seguridad de la información y el principio de consentimiento informado de la Ley N.° 29733 (Ley de Protección de Datos Personales de Perú). Asimismo, la dependencia de la interfaz web de la intranet universitaria genera una alta fragilidad operativa.
+* **Diseño Propuesto para Ingesta Institucional (Fase Posterior):**
+  1. **Vía Primaria (Administrativa):** Carga masiva estructurada por el Administrador de Tutoría de la EPIS mediante plantillas disociadas en Excel (`.xlsx` o `.csv`).
+  2. **Vía Secundaria (Autoservicio Seguro):** Procesamiento en cliente/servidor del reporte oficial de notas en PDF descargado voluntariamente por el estudiante de la intranet, extrayendo las asignaturas aprobadas sin solicitar ni almacenar contraseñas.
 
-#### 2.2. Análisis de Horarios Oficiales (Semestre 2026-II)
-Del análisis del documento de horarios de la EPIS:
-* **Ciclos Iniciales (I al III):** Cursan asignaturas generales y ciencias (*EG-181, EG-182, INE-186, INE-284, SI-384*)[cite: 4]. Sus horarios se concentran en el **turno mañana** (08:00 a 13:00)[cite: 4].
-* **Ciclos Superiores (VII al X):** Cursan asignaturas de especialidad (*SI-783, SI-881, SI-983, SI-083*)[cite: 4]. Sus horarios se concentran en el **turno tarde/noche** (15:00 a 21:40)[cite: 4].
-* **Compatibilidad:** La disponibilidad libre de ambos grupos se complementa naturalmente: los tutorados tienen libres las tardes/noches y los mentores tienen libres las mañanas y sábados[cite: 4].
+> **Estado actual del prototipo:** La fase analítica actual opera sobre un **dataset sintético reproducible** de 350 estudiantes modelado en SQLite (`data/epis_mentorias.db`), diseñado para validar la lógica del pipeline sin comprometer datos personales.
+
+#### 2.2. Análisis de Horarios Oficiales (Semestre Académico EPIS)
+Del análisis curricular y de la distribución horaria oficial de la EPIS:
+* **Ciclos Iniciales (I al III):** Cursan asignaturas generales y ciencias (*EG-181, EG-182, INE-186, INE-284, SI-384*). Sus horarios lectivos se concentran en el **turno mañana** (08:00 a 13:00).
+* **Ciclos Superiores (VII al X):** Cursan asignaturas de especialidad e ingeniería (*SI-783, SI-881, SI-983, SI-083*). Sus horarios lectivos se concentran preferentemente en el **turno tarde/noche** (15:00 a 21:40).
+* **Compatibilidad Horaria:** La disponibilidad temporal de ambos grupos se complementa: los estudiantes de ciclos iniciales disponen de tardes libres, mientras que los mentores de ciclos superiores disponen de mañanas y fines de semana libres para brindar asesorías.
 
 ---
 
 ### 3. Modelo Matemático del Algoritmo Híbrido
 
-El sistema descarta el uso del coseno aislado y adopta un **Pipeline en Dos Etapas (Two-Stage Pipeline)**[cite: 10]:
+El sistema descarta el uso de similitud aislada y adopta un **Pipeline de Recomendación en Dos Etapas (Two-Stage Pipeline)**:
 
-[Entrada: Petición de Mentoría]
-│
-▼
-┌──────────────────────┐
-│  ETAPA 1: SQL Filter │  --> Restricciones duras: Kardex >= 14, Horario, Cupo
-└──────────┬───────────┘
-│ Mentores preseleccionados
-▼
-┌──────────────────────┐
-│  ETAPA 2: TF-IDF     │  --> Vectorización de intereses y áreas de dominio
-└──────────┬───────────┘
-│ Vectores dispersos
-▼
-┌──────────────────────┐
-│  ETAPA 3: Coseno     │  --> Cálculo de afinidad angular sim(u, m)
-└──────────┬───────────┘
-│ Puntaje [0, 1]
-▼
-┌──────────────────────┐
-│  ETAPA 4: Re-ranking │  --> Ajuste por saturación y equidad a nuevos mentores
-└──────────┬───────────┘
-│ Score Final
-▼
-┌──────────────────────┐
-│  ETAPA 5: KNN Top-K  │  --> Selección de los K=3 mejores mentores
-└──────────────────────┘
+```text
+[Entrada: Petición de Mentoría (Curso, Tags, Horario)]
+  │
+  ▼
+┌───────────────────────────┐
+│  ETAPA 1: SQL Filter      │  --> Restricciones duras: Nota >= 14.0, Horario, Cupos disponibles
+└─────────────┬─────────────┘
+  │ Mentores preseleccionados (Candidatos elegibles)
+  ▼
+┌───────────────────────────┐
+│  ETAPA 2: TF-IDF          │  --> Vectorización de necesidades de tutorado y tags de mentores
+└─────────────┬─────────────┘
+  │ Representación vectorial dispersa
+  ▼
+┌───────────────────────────┐
+│  ETAPA 3: Similitud Coseno│  --> Medición de afinidad angular temático-léxica sim(u, m)
+└─────────────┬─────────────┘
+  │ Puntuación preliminar en [0, 1]
+  ▼
+┌───────────────────────────┐
+│  ETAPA 4: Load-aware      │  --> Ajuste por saturación de carga operativa y bono de oportunidad
+│           re-ranking      │      para mentores nuevos
+└─────────────┬─────────────┘
+  │ Puntuación calibrada final
+  ▼
+┌───────────────────────────┐
+│  ETAPA 5: Selección Top-K │  --> Selección y ordenamiento de los K mejores candidatos
+└───────────────────────────┘
+```
 
-#### 3.1. Fórmula de Puntuación de Equidad (Fairness Re-ranking)
-Para evitar la saturación de los mentores más populares y promover la equidad con mentores novatos:
+#### 3.1. Fórmula de puntuación del Load-Aware Re-ranking
+Para penalizar la saturación operativa de mentores con alta carga y otorgar un incentivo experimental a mentores nuevos:
 
 $$\text{PuntajeFinal}(m) = \alpha \cdot \text{SimCoseno}(u, m) - \beta \cdot \left(\frac{\text{SesionesActivas}(m)}{\text{MaxCupos}(m)}\right) + \gamma \cdot \text{BonoNuevo}(m)$$
 
-* **$\alpha = 0.70$**: Ponderación de afinidad temática de contenidos[cite: 6].
+Donde:
+* **$\alpha = 0.70$**: Ponderación de afinidad temática de contenidos (similitud de coseno).
 * **$\beta = 0.20$**: Factor de penalización por saturación de carga operativa.
 * **$\gamma = 0.10$**: Bono de oportunidad para mentores sin historial previo de tutorías.
+
+> [!NOTE]
+> Los valores $\alpha=0.70$, $\beta=0.20$ y $\gamma=0.10$ corresponden a la configuración experimental actual. No constituyen parámetros óptimos ni validados definitivamente; serán evaluados mediante experimentos comparativos y análisis de sensibilidad.
 
 ---
 
 ### 4. Doble Mecánica de Mentorías
-1. **Mentoría Individual (1 a 1):** Búsqueda asistida en catálogo Top-K; el estudiante elige su mentor tras la recomendación[cite: 6].
-2. **Clases por Demanda (Quórum Colectivo):** Solicitudes colectivas creadas por estudiantes. Al alcanzar el quórum mínimo (**10 inscritos en presencial / 20 en virtual**), la clase se habilita para que cualquier mentor apto tome la sesión.
+1. **Mentoría Individual (1 a 1):** Búsqueda asistida en catálogo Top-K; el estudiante recibe la lista clasificada y selecciona al mentor de su preferencia tras revisar su perfil.
+2. **Clases por Demanda (Quórum Colectivo):** Solicitudes colectivas creadas por estudiantes sobre un tema específico. Al alcanzar el quórum mínimo (**10 inscritos en presencial / 20 en virtual**), la clase se habilita formalmente para que cualquier mentor elegible asuma la sesión.
 
 ---
 
 ### 5. Metodología de Validación Experimental
-La efectividad del algoritmo no se mide exclusivamente por métricas fuera de línea, sino mediante **evaluación en línea de percepción y satisfacción (Escala Likert)** aplicada a los estudiantes de la muestra durante la fase piloto[cite: 6], analizando:
-* Pertinencia de los mentores recomendados[cite: 6].
-* Reducción del tiempo de búsqueda y coordinación[cite: 6].
-* Claridad y utilidad de las sesiones recibidas[cite: 6].
+
+La evaluación formal del sistema se divide metodológicamente en dos etapas complementarias:
+
+#### 5.1. Evaluación experimental offline (Estudio de ablación)
+Se evalúa la capacidad de optimización del algoritmo comparando tres líneas base (*baselines*) sobre el dataset de evaluación:
+* **B0 (Similitud pura):** $\text{score}(m) = \text{sim}(u, m)$ con $\alpha=1.0, \beta=0.0, \gamma=0.0$.
+* **B1 (Similitud + Carga):** $\text{score}(m) = \alpha \cdot \text{sim}(u, m) - \beta \cdot \text{load}(m)$ con $\alpha=0.70, \beta=0.20, \gamma=0.0$.
+* **B2 (Modelo propuesto completo):** $\alpha=0.70, \beta=0.20, \gamma=0.10$.
+
+**Métricas algorítmicas cuantitativas:**
+1. **Preservación de afinidad temática:** Similitud de coseno promedio del Top-K recomendado.
+2. **Balance y dispersión de carga:** Desviación estándar y coeficiente de variación de sesiones asignadas por mentor.
+3. **Tasa de saturación operativa:** Porcentaje de mentores que alcanzan el 100% de su capacidad.
+4. **Tasa de activación de nuevos talentos:** Proporción de mentores novatos recomendados en el Top-K y asignados con éxito.
+5. **Rendimiento computacional:** Registro de tiempos de respuesta del pipeline para establecer la línea base de latencia experimental.
+
+#### 5.2. Evaluación posterior con usuarios (Fase piloto en campo)
+Diferenciando rigurosamente las métricas matemáticas del algoritmo de la experiencia humana, se contempla una prueba piloto con usuarios evaluada mediante encuestas en Escala Likert:
+* **Pertinencia percibida:** Adecuación del perfil y dominio temático del mentor sugerido.
+* **Eficiencia en la coordinación:** Reducción subjetiva del tiempo dedicado a encontrar un tutor disponible.
+* **Satisfacción pedagógica:** Utilidad de las sesiones recibidas y percepción de progreso académico.
+
+---
+
+### 6. Limitaciones del Alcance Actual
+1. **Dataset Sintético:** Los experimentos actuales se fundamentan en distribuciones probabilísticas simuladas, no en trazas reales de interacción.
+2. **Representación Léxica TF-IDF:** El emparejamiento depende de coincidencia de n-gramas y vocabulario explícito; no resuelve polisemia ni sinonimia semántica profunda.
+3. **Parámetros Heurísticos:** Los coeficientes $\alpha, \beta, \gamma$ requieren calibración formal mediante barridos experimentales multiobjetivo.
