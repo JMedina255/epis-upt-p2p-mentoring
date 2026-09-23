@@ -46,7 +46,7 @@ Solicitud del estudiante
      ↓
 Filtrado de candidatos elegibles (Reglas deterministas)
      ↓
-Cálculo de similitud temática (Modelado de contenido)
+Cálculo de similitud temática (Modelado de contenipydo)
      ↓
 Ajuste por carga y oportunidad (Load-aware re-ranking)
      ↓
