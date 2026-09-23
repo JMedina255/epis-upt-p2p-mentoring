@@ -94,8 +94,8 @@ $$\text{score}(m) = \alpha \cdot \text{similarity}(u, m) - \beta \cdot \text{loa
 Donde cada componente representa:
 
 * **$\text{similarity}(u, m)$:** Similitud de coseno entre los vectores TF-IDF construidos a partir de los requerimientos temáticos del estudiante y las áreas de dominio registradas por el mentor.
-* **$\text{load}(m) = \frac{\text{sesiones\_activas}(m)}{\text{max\_cupos}(m)}$:** Fracción de carga operativa actual del mentor; penaliza a quienes tienen la mayor parte de sus cupos ocupados para evitar su saturación.
-* **$\text{newcomer}(m) \in \{0, 1\}$:** Variable indicadora que otorga un bono temporal a los mentores que no registran sesiones activas previas, promoviendo la rotación de oportunidades.
+* **$\text{load}(m) = \frac{\text{SesionesActivas}(m)}{\text{MaxCupos}(m)}$:** Fracción de carga operativa actual del mentor; penaliza a quienes tienen la mayor parte de sus cupos ocupados para evitar su saturación.
+* **$\text{newcomer}(m) \in \\{0, 1\\}$:** Variable indicadora binaria (1 si es nuevo mentor, 0 en caso contrario) que otorga un bono temporal a quienes no registran sesiones activas previas, promoviendo la rotación de oportunidades.
 
 > **Aviso metodológico sobre los parámetros:** Los coeficientes $\alpha$, $\beta$ y $\gamma$ configurados actualmente ($\alpha = 0.70$, $\beta = 0.20$, $\gamma = 0.10$) son **parámetros experimentales en proceso de evaluación y calibración**, no pesos óptimos demostrados. Su propósito en esta etapa es validar el funcionamiento mecánico del re-ranking. Una evaluación formal y cuantitativa de equidad distributiva (*fairness*) queda planteada como trabajo de investigación futuro.
 
