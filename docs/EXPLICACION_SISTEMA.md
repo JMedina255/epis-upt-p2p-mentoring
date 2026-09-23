@@ -6,7 +6,7 @@
 ### 1. Justificación y Alcance del Proyecto
 El sistema aborda la problemática de retención y rendimiento estudiantil en la Escuela Profesional de Ingeniería de Sistemas de la Universidad Privada de Tacna (EPIS-UPT), orientándose a una población estudiantil de aproximadamente 350 matriculados. El propósito central no es diseñar un algoritmo de aprendizaje profundo complejo desde cero, sino **implementar un pipeline de recomendación en dos etapas (Two-Stage Recommendation Pipeline)** que optimice el emparejamiento bidireccional entre estudiantes de ciclos avanzados (mentores) y estudiantes de ciclos iniciales (tutorados).
 
-El alcance del proyecto es **exclusivamente una plataforma web**, centralizando su lógica de inferencia en un motor modular en Python conectado a la infraestructura de persistencia relacional.
+El alcance del proyecto es **exclusivamente una plataforma web**, centralizando su lógica de inferencia en un motor de recomendación en Python conectado a la persistencia relacional.
 
 ---
 

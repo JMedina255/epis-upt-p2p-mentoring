@@ -14,7 +14,7 @@ Este documento establece las especificaciones técnicas obligatorias, restriccio
 ---
 
 ### 2. Reglas de Negocio No Negociables
-1. **Asimetría de Roles:** Un estudiante de ciclos iniciales (Ciclos I al IV) no puede ser recomendado para tutorías técnicas sobre asignaturas de carrera. El filtro relacional SQL siempre debe restringir los mentores candidatos a estudiantes de ciclos avanzados con condición formal de aprobado en la materia solicitada.
+1. **Asimetría de Roles:** Un estudiante no puede ser recomendado para tutorías técnicas si no cuenta con el rol asignado de mentor y la materia aprobada. En el diseño del sistema y dataset, el rol `MENTOR` corresponde a estudiantes de ciclos superiores que han completado asignaturas avanzadas. En el motor relacional SQL, la consulta filtra explícitamente por `e.rol = 'MENTOR'` y calificación aprobatoria $\ge 14.0$ en la materia requerida (sin filtrar el campo `ciclo_actual` directamente en la query).
 2. **Calificación Mínima Aprobatoria del Mentor:** Todo mentor debe registrar una calificación de $\ge 14.0$ en la escala vigesimal $[0, 20]$ en la asignatura requerida.
 3. **Privacidad de Credenciales (Ley N.° 29733):** Queda terminantemente prohibido implementar pantallas, servicios o APIs que capturen contraseñas, tokens de sesión o credenciales institucionales de la intranet universitaria UPT. Toda ingesta futura de notas se concibe mediante plantillas administrativas o lectura de reportes PDF en cliente/servidor.
 4. **Modalidad y Quórum de Clases Colectivas:**
@@ -53,33 +53,34 @@ Los siguientes valores corresponden a la **configuración experimental actual** 
 Al implementar, refactorizar o extender el motor de recomendación, el flujo debe respetar estrictamente las siguientes fases:
 
 1. **FASE 1 - FILTRADO DETERMINISTA (SQL HARD RULES):**
-   * Preselección relacional con tres condiciones simultáneas: Nota $\ge 14.0$, disponibilidad en el día y franja horaria solicitados, y sesiones activas estrictamente menores al cupo máximo asignado (`sesiones_activas < max_cupos` y `max_cupos > 0`).
+   * Preselección relacional con tres condiciones simultáneas: Nota $\ge 14.0$, coincidencia exacta en día y franja horaria solicitados, y sesiones activas estrictamente menores al cupo máximo asignado (`e.sesiones_activas < e.max_cupos_mentor`). Dado que las sesiones activas son valores no negativos ($\ge 0$), esta desigualdad excluye naturalmente a mentores con `max_cupos = 0` o cupos colmados.
    * **Cortocircuito obligatorio:** Si la consulta SQL devuelve 0 candidatos aptos, el pipeline debe retornar inmediatamente una lista vacía `[]`, sin invocar la vectorización ni el re-ranking.
 
-2. **FASE 2 - ESPACIO VECTORIAL Y CONTENIDO (TF-IDF + COSENO):**
+2. **FASE 2 - ESPACIO VECTORIAL Y CONTENIDO (TF-IDF + SIMILITUD DE COSENO):**
    * Ajustar la matriz término-documento sobre los tags de intereses y temas requeridos.
+   * Calcular la afinidad angular $\text{SimCoseno}(u, m) \in [0, 1]$.
    * Manejo seguro ante vocabularios disjuntos (similitud = 0.0) o textos vacíos.
 
-3. **FASE 3 - INTEGRACIÓN TWO-STAGE + TOP-K RANKING:**
-   * Acoplar la preselección de la Fase 1 con las puntuaciones de similitud de la Fase 2.
-   * Ordenar candidatos por similitud y seleccionar las K mejores alternativas según el experimento definido.
+3. **FASE 3 - INTEGRACIÓN DEL TWO-STAGE PIPELINE:**
+   * Acoplar secuencialmente la preselección determinista de la Fase 1 con el cálculo de similitud de la Fase 2.
    * Registrar el tiempo de ejecución del pipeline para establecer una línea base de rendimiento experimental.
 
 4. **FASE 4 - LOAD-AWARE RE-RANKING:**
    * Aplicar la ecuación de re-ranking sensible a la carga:
      $$\text{score}(m) = \alpha \cdot \text{SimCoseno}(u, m) - \beta \cdot \left(\frac{\text{SesionesActivas}(m)}{\text{MaxCupos}(m)}\right) + \gamma \cdot \text{BonoNuevo}(m)$$
    * Los coeficientes $\alpha$, $\beta$ y $\gamma$ deben inyectarse dinámicamente desde la configuración.
-   * Manejo seguro ante `max_cupos = 0` para evitar divisiones por cero.
+   * Manejo seguro ante `max_cupos = 0` para evitar divisiones por cero (asumiendo penalización por saturación = 1.0).
 
-5. **FASE 5 - AUDITORÍA DE DISTRIBUCIÓN Y EXPERIMENTACIÓN:**
-   * Permitir la evaluación de baselines comparativos (B0: Similitud pura, B1: Similitud + Carga, B2: Modelo propuesto completo).
-   * Producir métricas cuantitativas exportables (similitud promedio, varianza de carga, tasa de saturación, tasa de activación de nuevos talentos).
+5. **FASE 5 - SELECCIÓN TOP-K, AUDITORÍA Y EXPERIMENTACIÓN:**
+   * Selección final de las K mejores recomendaciones mediante slicing ordenado (`ranking[:k_final]`), validando $k \ge 1$.
+   * Permitir la evaluación de baselines comparativos de ablación (B0: Similitud pura, B1: Similitud + Carga, B2: Modelo propuesto completo).
+   * Producir métricas cuantitativas exportables (similitud promedio Top-K, varianza de carga, tasa de saturación, tasa de activación de nuevos talentos).
 
 ---
 
 ### 6. Estrategia de Pruebas Automatizadas (Pytest)
 
-Las pruebas deben ser completamente herméticas e independientes de la base de datos de producción `data/epis_mentorias.db`, utilizando la fixture `test_db` definida en `tests/conftest.py` sobre bases SQLite temporales en memoria o `tmp_path`.
+Las nuevas suites unitarias y de integración deben ser herméticas e independientes de `data/epis_mentorias.db`, utilizando fixtures SQLite temporales (`test_db` definida en `tests/conftest.py`). La suite histórica `tests/test_algoritmo_progresivo.py` se conserva temporalmente como referencia progresiva legacy sobre el dataset sintético del repositorio hasta su posterior unificación.
 
 La suite se organiza en:
 * **`tests/unit/test_config.py`:** Validación de parámetros en `system_rules.json`, rangos $[0, 1]$, escala vigesimal $[0, 20]$, enteros positivos para `top_k` y manejo de JSON corrupto.
