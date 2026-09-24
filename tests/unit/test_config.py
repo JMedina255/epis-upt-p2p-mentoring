@@ -7,7 +7,14 @@ errores comprensibles en lugar de propagar comportamientos anómalos en el motor
 import json
 import pytest
 
-from src.motor_recomendacion import cargar_reglas_sistema, validar_reglas_sistema
+from src.config import cargar_reglas_sistema, validar_reglas_sistema
+import src.motor_recomendacion as motor_rec
+
+
+def test_config_retrocompatibilidad_import_desde_motor():
+    """Valida que cargar_reglas_sistema y validar_reglas_sistema sigan accesibles desde motor_recomendacion."""
+    assert motor_rec.cargar_reglas_sistema is cargar_reglas_sistema
+    assert motor_rec.validar_reglas_sistema is validar_reglas_sistema
 
 
 def test_config_valida_correcta(tmp_path):
