@@ -36,7 +36,7 @@ def filtrar_mentores_sql(
     
     Ejecuta la primera etapa del pipeline en el motor de base de datos relacional.
     Aplica una poda estricta basada en reglas de negocio académicas y operativas:
-      1. Asimetría de roles: Solo estudiantes con rol 'MENTOR' de ciclos avanzados.
+      1. Asimetría de roles: Solo estudiantes con rol 'MENTOR'.
       2. Mérito académico: Curso cursado con condición 'APROBADO' y nota >= nota_minima (14.0).
       3. Capacidad de atención: Mentores con cupos libres (sesiones_activas < max_cupos_mentor).
       4. Factibilidad horaria: Coincidencia simultánea en día y franja horaria requerida.
