@@ -1,5 +1,6 @@
 # Sistema Web P2P de Mentorías Académicas - EPIS UPT
 
+[![Tests](https://github.com/JMedina255/epis-upt-p2p-mentoring/actions/workflows/tests.yml/badge.svg)](https://github.com/JMedina255/epis-upt-p2p-mentoring/actions/workflows/tests.yml)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/)
 [![Streamlit](https://img.shields.io/badge/Frontend-Streamlit-FF4B4B.svg)](https://streamlit.io/)
 [![Scikit-Learn](https://img.shields.io/badge/Library-Scikit--Learn-orange.svg)](https://scikit-learn.org/)
@@ -322,7 +323,8 @@ El reconocimiento explícito de las limitaciones del proyecto es parte del rigor
 - [x] Suite de pruebas progresivas unitarias (Fases 1 y 2)
 - [x] Script automatizado de generación de dataset sintético reproducible
 - [x] Suite de pruebas unitarias e integración con `pytest` (aislamiento con base SQLite temporal)
-- [ ] Pipeline de Integración Continua (CI) mediante GitHub Actions
+- [x] Pipeline de Integración Continua con GitHub Actions
+- [x] Cobertura automatizada con umbral mínimo del 85% (Branch Coverage)
 - [ ] Experimentación sistemática y calibración de pesos $\alpha$, $\beta$ y $\gamma$
 - [ ] Implementación de baselines comparativos (B0, B1, B2)
 - [ ] Medición y reporte cuantitativo de métricas de recomendación y distribución
