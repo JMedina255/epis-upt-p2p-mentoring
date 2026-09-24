@@ -6,7 +6,14 @@ herméticas y sin acoplamiento a data/epis_mentorias.db.
 
 import os
 import pytest
-from src.motor_recomendacion import filtrar_mentores_sql, resolver_ruta_bd
+from src.data.repository import filtrar_mentores_sql, resolver_ruta_bd
+import src.motor_recomendacion as motor_rec
+
+
+def test_repository_retrocompatibilidad_import_desde_motor():
+    """Valida que filtrar_mentores_sql y resolver_ruta_bd sigan accesibles desde motor_recomendacion."""
+    assert motor_rec.filtrar_mentores_sql is filtrar_mentores_sql
+    assert motor_rec.resolver_ruta_bd is resolver_ruta_bd
 
 
 def test_filtrado_sql_excluye_nota_menor_al_umbral(test_db):
